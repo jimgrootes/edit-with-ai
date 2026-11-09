@@ -192,6 +192,21 @@ how you look at video cheaply: one image instead of hundreds of frames.
 - Measure loudness (`loudnorm` in print mode): within ±1 LU of the target.
 - Make a contact sheet of the output and look at it once: faces in frame, captions not over faces, no black frames.
 
+### 4.9 Color without DaVinci: `tools/grade.html`
+Log footage (D-Log, S-Log, Apple Log, V-Log…) looks flat until it's converted, and even converted footage often needs a
+little more contrast. On route 1 the user grades in the browser, not in an editing program:
+1. Tell the user to open `tools/grade.html` (double-click; it works offline in Chrome or Safari), drop in a frame or a
+   short clip, and load their camera maker's official "log to Rec.709" LUT as the conversion (download it from the
+   maker's site; if they film in a normal color profile, skip it).
+2. They bend the curves (and optionally exposure, contrast, saturation, warmth, or a look LUT they own), compare before
+   and after with the wipe, watch the waveform, and click **Download LUT**. That `.cube` contains the conversion plus
+   their adjustments.
+3. Put the file in `work/` and apply it in `render.py` to every segment shot on that camera:
+   `-vf "lut3d=file=work/<name>.cube"` (on the original log files, before scaling). Store the LUT path per camera in
+   `AGENTS.md` so every next video uses it automatically.
+Don't invent a look yourself or "fix" the user's grade; the grade is their taste. If a shot is clearly over- or
+underexposed compared to the rest, tell them, and let them adjust it in the tool.
+
 ## 5. Organize footage (the biggest time saver)
 
 When the user asks "what do I have of X", or before a project with a lot of b-roll:

@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grade Without DaVinci</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Grading-UI: neutraal donkergrijs (geen warme of koele zweem die je kleurbeoordeling stuurt), messing als accent. */
+:root {
+  --bg: #161616; --panel: #1f1f1f; --panel2: #262626; --line: #333; --text: #ecebe8; --mute: #9a968f;
+  --brass: #c9a25e; --brass-d: #a97f36; --ink: #16130f; --paper: #f4efe7; --ok: #8fb98a; --r: #e0645c; --g: #74c27a; --b: #6f9ee8;
+  --head: "Barlow Condensed", "Arial Narrow", sans-serif; --mono: "JetBrains Mono", Menlo, monospace; --sans: Inter, -apple-system, system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 22px 22px 40px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+.kicker { font: 700 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--brass); }
+h1 { font: 800 44px/1 var(--head); text-transform: uppercase; margin: 8px 0 6px; letter-spacing: .01em; }
+h1 em { font-style: normal; color: var(--brass); }
+.lead { color: var(--mute); max-width: 72ch; margin: 0; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+button, .btn { font: 600 13px/1 var(--sans); color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; cursor: pointer; }
+button:hover { border-color: var(--brass); }
+button.primary { background: var(--brass); color: var(--ink); border-color: var(--brass); font-weight: 700; }
+button.on { border-color: var(--brass); color: var(--brass); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; }
+@media (max-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.viewer { position: relative; overflow: hidden; border-radius: 14px; background: #000; aspect-ratio: 16 / 9; user-select: none; }
+.viewer canvas { width: 100%; height: 100%; display: block; }
+.tag { position: absolute; top: 12px; font: 700 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 7px 9px; border-radius: 7px; background: rgba(0,0,0,.55); }
+.tag.l { left: 12px; } .tag.r { right: 12px; color: var(--brass); }
+.handle { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--brass); box-shadow: 0 0 10px rgba(201,162,94,.7); cursor: ew-resize; }
+.handle::after { content: ""; position: absolute; top: 50%; left: -13px; width: 28px; height: 28px; margin-top: -14px; border-radius: 50%; background: var(--brass); box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.bar .sp { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: var(--panel2); }
+.seg button.on { background: var(--brass); color: var(--ink); }
+.strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.thumb { position: relative; border-radius: 10px; overflow: hidden; border: 2px solid transparent; cursor: pointer; background: #000; }
+.thumb.on { border-color: var(--brass); }
+.thumb canvas { width: 100%; aspect-ratio: 16 / 9; display: block; }
+.thumb span { position: absolute; left: 6px; bottom: 5px; font: 600 10.5px/1.2 var(--sans); color: #fff; text-shadow: 0 1px 3px #000; }
+.scopes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.scope { padding: 10px 12px 12px; }
+.scope h3, .sec h3 { font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--brass); margin: 0 0 10px; display: flex; justify-content: space-between; }
+.scope h3 small { color: var(--mute); font-weight: 500; letter-spacing: .06em; }
+.scope canvas { width: 100%; height: 150px; display: block; background: #0d0d0d; border-radius: 8px; }
+.side { display: flex; flex-direction: column; gap: 12px; }
+.sec { padding: 14px 16px 16px; }
+.sec h3 .n { color: var(--mute); }
+.opt { display: grid; grid-template-columns: 18px 1fr; gap: 4px 10px; align-items: start; padding: 8px 10px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; }
+.opt:hover { background: var(--panel2); }
+.opt.on { border-color: var(--brass); background: rgba(201,162,94,.07); }
+.opt input { margin: 3px 0 0; accent-color: var(--brass); }
+.opt b { font-weight: 600; } .opt i { grid-column: 2; font-style: normal; color: var(--mute); font-size: 12.5px; }
+select, input[type=text] { width: 100%; font: 500 13.5px/1.2 var(--sans); color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 11px; }
+.row { display: grid; grid-template-columns: 110px 1fr 54px; gap: 10px; align-items: center; margin: 10px 0 0; }
+.row label { color: var(--mute); font-size: 13px; }
+.row output { font: 500 12px var(--mono); text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--brass); }
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabs button { flex: 1; padding: 8px 0; font-family: var(--mono); font-weight: 700; }
+.tabs button[data-c=r].on { color: var(--r); border-color: var(--r); } .tabs button[data-c=g].on { color: var(--g); border-color: var(--g); } .tabs button[data-c=b].on { color: var(--b); border-color: var(--b); }
+#curve { width: 100%; aspect-ratio: 1; display: block; background: #0f0f0f; border-radius: 10px; cursor: crosshair; touch-action: none; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.chips button { padding: 7px 10px; font-size: 12.5px; }
+.hint { color: var(--mute); font-size: 12px; margin: 8px 0 0; }
+pre { font: 500 12px/1.5 var(--mono); background: #0f0f0f; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; white-space: pre-wrap; word-break: break-all; margin: 10px 0 0; color: #d9d4ca; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.actions .wide { grid-column: 1 / -1; }
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 14px; text-align: center; color: var(--mute); font-size: 13px; cursor: pointer; }
+.drop.over { border-color: var(--brass); color: var(--brass); }
+.vbar { display: none; gap: 10px; align-items: center; margin-top: 10px; } .vbar.on { display: flex; }
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--brass); color: var(--ink); font-weight: 700; padding: 11px 16px; border-radius: 10px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.toast.on { opacity: 1; }
+.err { padding: 18px; color: #f2b8b5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="kicker">Free setup · edit with AI</div>
+      <h1>Curves for your <em>b-roll</em></h1>
+      <p class="lead">Drop in a frame or a clip, pick your camera's conversion LUT if you film in log, bend the curve and download a .cube. Claude applies it to all your footage with ffmpeg.</p>
+    </div>
+    <div class="presets" id="presets"></div>
+  </header>
+
+  <div class="grid">
+    <main>
+      <div class="viewer card" id="viewer">
+        <canvas id="gl" width="1280" height="720"></canvas>
+        <div class="tag l" id="tagL"></div><div class="tag r" id="tagR"></div>
+        <div class="handle" id="handle"></div>
+      </div>
+      <div class="bar">
+        <div class="seg" id="mode">
+          <button data-m="wipe" class="on">Compare</button><button data-m="after">Graded</button><button data-m="before">Original</button>
+        </div>
+        <div class="seg" id="refsel">
+          <button data-r="ref" class="on">Before</button><button data-r="log">Raw input</button>
+        </div>
+        <span class="sp"></span>
+        <label class="btn" for="file">+ Your frame or clip</label><input type="file" id="file" accept="image/*,video/*" hidden>
+      </div>
+      <div class="vbar card" id="vbar" style="padding:10px 12px"><button id="vplay">▶</button><input type="range" id="vseek" min="0" max="1000" value="0"><span class="kicker" id="vtime">0:00</span></div>
+      <div class="strip" id="strip"></div>
+      <div class="scopes">
+        <div class="scope card"><h3>Waveform <small>0–100</small></h3><canvas id="wave" width="512" height="200"></canvas></div>
+        <div class="scope card"><h3>Histogram <small>RGB</small></h3><canvas id="hist" width="512" height="200"></canvas></div>
+      </div>
+    </main>
+
+    <aside class="side">
+      <section class="sec card"><h3><span>1 · Conversion</span><span class="n">D-Log → Rec.709</span></h3><div id="bases"></div>
+        <div class="drop" id="dropBase">+ Camera log → Rec.709 LUT (.cube)</div><input type="file" id="cubeBase" accept=".cube" hidden></section>
+      <section class="sec card"><h3><span>2 · Look (optional)</span><span class="n">Rec.709</span></h3>
+        <select id="look"></select>
+        <div class="row"><label>Strength</label><input type="range" id="lookAmt" min="0" max="100" value="100"><output id="lookAmtO"></output></div>
+        <div class="drop" id="dropLook" style="margin-top:10px">+ Look LUT (.cube)</div><input type="file" id="cubeLook" accept=".cube" hidden></section>
+      <section class="sec card"><h3><span>3 · Curves</span><span class="n" id="curveInfo"></span></h3>
+        <div class="tabs" id="tabs"><button data-c="m" class="on">Y</button><button data-c="r">R</button><button data-c="g">G</button><button data-c="b">B</button></div>
+        <canvas id="curve" width="640" height="640"></canvas>
+        <p class="hint">Click to add a point, drag to bend, double-click or drag it out to remove. Y works on all channels at once.</p>
+        <div class="chips" id="cpresets"></div></section>
+      <section class="sec card"><h3><span>4 · Fine-tune</span></h3>
+        <div class="row"><label>Exposure</label><input type="range" id="exp" min="-100" max="100" value="0"><output id="expO"></output></div>
+        <div class="row"><label>Contrast</label><input type="range" id="con" min="-50" max="50" value="0"><output id="conO"></output></div>
+        <div class="row"><label>Saturation</label><input type="range" id="sat" min="0" max="200" value="100"><output id="satO"></output></div>
+        <div class="row"><label>Warmth</label><input type="range" id="warm" min="-100" max="100" value="0"><output id="warmO"></output></div></section>
+      <section class="sec card"><h3><span>5 · Save</span></h3>
+        <input type="text" id="fname" value="my-grade">
+        <div class="actions">
+          <button class="primary wide" id="dl">Download LUT (.cube, 65)</button>
+          <button id="dljson">Settings (.json)</button><button id="ldjson">Load settings</button><input type="file" id="jsonfile" accept=".json" hidden>
+        </div>
+        <pre id="cmd"></pre>
+        <div class="actions"><button class="wide" id="copy">Copy the command</button></div>
+        <p class="hint">The LUT includes the conversion you picked, so it works on the same footage you graded.</p></section>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {"strings": {"noLook": "No look", "noGL": "This browser has no WebGL2. Open this file in Chrome or Safari.", "after": "Graded", "refTag": "Before", "logTag": "Raw input", "master": "Luma (all channels)", "points": "points", "badCube": "Can't read this .cube file", "ownCube": "your .cube", "made": "made with Grade Without DaVinci", "baseIs": "conversion", "saved": "Saved:", "loaded": "Settings loaded", "badJson": "Not a valid settings file", "copied": "Copied", "copyFail": "Copy failed: select the text", "refBase": "Before", "dropFirst": "Click to pick a frame or clip to grade"}, "bases": [], "looks": [], "ref": null, "frames": [], "key": "grade-without-davinci-v1", "cmd": "# one clip:\nffmpeg -i clip.mp4 -vf \"lut3d=file={f}.cube\" -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a copy clip_graded.mp4\n# or tell Claude: \"apply {f}.cube to all my b-roll\"", "curvePresets": [["lin", "Straight"], ["soft", "Soft S"], ["firm", "Firm S"], ["matte", "Matte blacks"], ["lift", "Brighter"]], "presets": [{"name": "Reset", "s": {}}]};
+const S = DATA.strings;
+const $ = (id) => document.getElementById(id);
+const toast = (t) => { const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.remove("on"), 2200); };
+
+// ── LUT's: half-floats (base64) → Float32 + Uint16 voor de GPU ─────────────────────────────────────────────────
+const b64u8 = (s) => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+const half2f = (h) => { const s = (h & 0x8000) ? -1 : 1, e = (h >> 10) & 31, m = h & 1023;
+  return e === 0 ? s * Math.pow(2, -14) * (m / 1024) : e === 31 ? (m ? NaN : s * Infinity) : s * Math.pow(2, e - 15) * (1 + m / 1024); };
+const f2half = (v) => { const f = new Float32Array(1), i = new Int32Array(f.buffer); f[0] = v; const x = i[0];
+  const s = (x >> 16) & 0x8000; let e = ((x >> 23) & 0xff) - 127 + 15, m = x & 0x7fffff;
+  if (e <= 0) return s; if (e >= 31) return s | 0x7c00; return s | (e << 10) | ((m + 0x1000) >> 13); };
+function lutFromHalf(n, b64) { const u8 = b64u8(b64); const h = new Uint16Array(u8.buffer); const f = new Float32Array(h.length); for (let i = 0; i < h.length; i++) f[i] = half2f(h[i]); return { n, f, h }; }
+function parseCube(txt) {
+  let n = 0, mn = [0, 0, 0], mx = [1, 1, 1]; const vals = [];
+  for (const raw of txt.split(/\r?\n/)) { const l = raw.trim(); if (!l || l[0] === "#") continue;
+    if (/^LUT_3D_SIZE/i.test(l)) n = parseInt(l.split(/\s+/)[1]); else if (/^DOMAIN_MIN/i.test(l)) mn = l.split(/\s+/).slice(1).map(Number);
+    else if (/^DOMAIN_MAX/i.test(l)) mx = l.split(/\s+/).slice(1).map(Number); else if (/^[-\d.]/.test(l)) { const p = l.split(/\s+/).map(Number); if (p.length >= 3) vals.push(p[0], p[1], p[2]); } }
+  if (!n || vals.length !== n * n * n * 3) throw new Error("geen geldige 3D-LUT");
+  const f = new Float32Array(vals); const h = new Uint16Array(f.length); for (let i = 0; i < f.length; i++) h[i] = f2half(f[i]);
+  return { n, f, h, mn, mx };
+}
+const BASES = DATA.bases.map((b) => ({ ...b, lut: lutFromHalf(b.n, b.d) }));
+const LOOKS = [{ id: "none", name: S.noLook }].concat(DATA.looks.map((l) => ({ ...l, lut: lutFromHalf(l.n, l.d) })));
+const REF = DATA.ref ? lutFromHalf(DATA.ref.n, DATA.ref.d) : null;
+const IDENT = (() => { const n = 2, f = new Float32Array([0,0,0, 1,0,0, 0,1,0, 1,1,0, 0,0,1, 1,0,1, 0,1,1, 1,1,1]); const h = new Uint16Array(f.length); for (let i = 0; i < f.length; i++) h[i] = f2half(f[i]); return { n, f, h }; })();
+
+// ── instellingen ──────────────────────────────────────────────────────────────────────────────────────────────
+const LIN = () => [[0, 0], [1, 1]];
+const fresh = () => ({ base: BASES.length ? BASES[0].id : "custom", look: "none", lookAmt: 1, exp: 0, con: 0, sat: 1, warm: 0, curves: { m: LIN(), r: LIN(), g: LIN(), b: LIN() } });
+let st = fresh();
+let customBase = null, customLook = null;
+const PRESETS = DATA.presets || [];
+
+// ── monotone kubische curve (Fritsch–Carlson) → tabel van 1024 ─────────────────────────────────────────────────
+function curveTable(pts, n = 1024) {
+  const p = pts.slice().sort((a, b) => a[0] - b[0]); const k = p.length; const out = new Float32Array(n);
+  const dx = [], dy = [], m = [];
+  for (let i = 0; i < k - 1; i++) { dx.push(Math.max(1e-6, p[i + 1][0] - p[i][0])); dy.push(p[i + 1][1] - p[i][1]); m.push(dy[i] / dx[i]); }
+  const t = new Array(k).fill(0); t[0] = m[0]; t[k - 1] = m[k - 2];
+  for (let i = 1; i < k - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  for (let i = 0; i < k - 1; i++) { if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b; if (s > 9) { const q = 3 / Math.sqrt(s); t[i] = q * a * m[i]; t[i + 1] = q * b * m[i]; } }
+  let seg = 0;
+  for (let j = 0; j < n; j++) { const x = j / (n - 1);
+    if (x <= p[0][0]) { out[j] = p[0][1]; continue; } if (x >= p[k - 1][0]) { out[j] = p[k - 1][1]; continue; }
+    while (seg < k - 2 && x > p[seg + 1][0]) seg++;
+    const h = dx[seg], u = (x - p[seg][0]) / h, u2 = u * u, u3 = u2 * u;
+    out[j] = Math.min(1, Math.max(0, (2 * u3 - 3 * u2 + 1) * p[seg][1] + (u3 - 2 * u2 + u) * h * t[seg] + (-2 * u3 + 3 * u2) * p[seg + 1][1] + (u3 - u2) * h * t[seg + 1])); }
+  return out;
+}
+
+// ── WebGL2 ────────────────────────────────────────────────────────────────────────────────────────────────────
+const cv = $("gl"); const gl = cv.getContext("webgl2", { preserveDrawingBuffer: true, premultipliedAlpha: false });
+if (!gl) { document.querySelector("main").innerHTML = '<div class="card err">' + S.noGL + '</div>'; throw new Error("geen WebGL2"); }
+gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);   // LUT-rijen (33 × RGB16F = 198 bytes) zijn niet op 4 uitgelijnd
+const VS = `#version 300 es
+in vec2 p; out vec2 uv; void main(){ uv = vec2(p.x*.5+.5, .5-p.y*.5); gl_Position = vec4(p,0.,1.); }`;
+const FS = `#version 300 es
+precision highp float; precision highp sampler3D;
+uniform sampler2D uImg; uniform sampler3D uBase, uLook, uRef; uniform sampler2D uCurve;
+uniform float uBaseN, uLookN, uRefN, uLookAmt, uExp, uWarm, uCon, uSat, uWipe; uniform int uHasLook, uBeforeLog;
+in vec2 uv; out vec4 o;
+vec3 lut(sampler3D t, float n, vec3 c){ c = clamp(c, 0., 1.); return texture(t, (c*(n-1.)+.5)/n).rgb; }
+float cu(float x, int ch){ vec4 v = texture(uCurve, vec2(clamp(x,0.,1.)*(1023./1024.)+.5/1024., .5)); return ch==0?v.r:ch==1?v.g:ch==2?v.b:v.a; }
+vec3 grade(vec3 c){
+  vec3 y = lut(uBase, uBaseN, c);
+  y *= exp2(uExp);
+  y *= vec3(1.+.08*uWarm, 1., 1.-.08*uWarm);
+  y = clamp(y, 0., 1.);
+  if (uHasLook==1) { y = mix(y, lut(uLook, uLookN, y), uLookAmt); }
+  vec3 s = y*y*(3.-2.*y); y = clamp(y + uCon*2.*(s-y), 0., 1.);
+  y = vec3(cu(cu(y.r,3),0), cu(cu(y.g,3),1), cu(cu(y.b,3),2));
+  float L = dot(y, vec3(.2126,.7152,.0722)); return clamp(vec3(L) + (y-vec3(L))*uSat, 0., 1.);
+}
+void main(){
+  vec3 c = texture(uImg, uv).rgb;
+  vec3 before = uBeforeLog==1 ? c : lut(uRef, uRefN, c);
+  o = vec4(uv.x < uWipe ? before : grade(c), 1.);
+}`;
+function sh(t, s) { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = {}; for (const n of ["uImg","uBase","uLook","uRef","uCurve","uBaseN","uLookN","uRefN","uLookAmt","uExp","uWarm","uCon","uSat","uWipe","uHasLook","uBeforeLog"]) U[n] = gl.getUniformLocation(prog, n);
+gl.uniform1i(U.uImg, 0); gl.uniform1i(U.uBase, 1); gl.uniform1i(U.uLook, 2); gl.uniform1i(U.uRef, 3); gl.uniform1i(U.uCurve, 4);
+function tex3d(unit, l) { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_3D, t);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB16F, l.n, l.n, l.n, 0, gl.RGB, gl.HALF_FLOAT, l.h);
+  for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_3D, p, gl.LINEAR);
+  for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, p, gl.CLAMP_TO_EDGE); return t; }
+const curveTex = gl.createTexture(); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, curveTex);
+for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.LINEAR);
+for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE);
+const imgTex = gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, imgTex);
+for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.LINEAR);
+for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE);
+let texBase, texLook, texRef;
+const curBase = () => st.base === "custom" ? customBase : (BASES.find((b) => b.id === st.base) || BASES[0] || {}).lut;
+const curLook = () => st.look === "custom" ? customLook : st.look === "none" ? null : (LOOKS.find((l) => l.id === st.look) || {}).lut;
+function bindLuts() {
+  const b = curBase() || IDENT; texBase = tex3d(1, b); gl.uniform1f(U.uBaseN, b.n);
+  const l = curLook(); texLook = tex3d(2, l || IDENT); gl.uniform1f(U.uLookN, (l || IDENT).n); gl.uniform1i(U.uHasLook, l ? 1 : 0);
+  const r = REF || b; texRef = tex3d(3, r); gl.uniform1f(U.uRefN, r.n);
+}
+function upCurves() {
+  const T = ["r", "g", "b", "m"].map((c) => curveTable(st.curves[c])); const h = new Uint16Array(1024 * 4);
+  for (let i = 0; i < 1024; i++) for (let c = 0; c < 4; c++) h[i * 4 + c] = f2half(T[c][i]);
+  gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, curveTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, 1024, 1, 0, gl.RGBA, gl.HALF_FLOAT, h);
+  return T;
+}
+let wipe = 0.5, mode = "wipe", beforeLog = false;
+function uniforms() {
+  gl.uniform1f(U.uExp, st.exp); gl.uniform1f(U.uWarm, st.warm); gl.uniform1f(U.uCon, st.con); gl.uniform1f(U.uSat, st.sat); gl.uniform1f(U.uLookAmt, st.lookAmt);
+  gl.uniform1i(U.uBeforeLog, beforeLog ? 1 : 0);
+}
+// ── beelden ───────────────────────────────────────────────────────────────────────────────────────────────────
+const FRAMES = []; let cur = 0; let video = null;
+function setImage(src) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, imgTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); }
+// kleine render naar een offscreen buffer voor scopes en duimnagels
+const fbo = gl.createFramebuffer(), fboTex = gl.createTexture(); const FW = 320, FH = 180;
+gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, fboTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, FW, FH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+const px = new Uint8Array(FW * FH * 4);
+function renderSmall(wp) { gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, FW, FH); gl.uniform1f(U.uWipe, wp); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.readPixels(0, 0, FW, FH, gl.RGBA, gl.UNSIGNED_BYTE, px); gl.bindFramebuffer(gl.FRAMEBUFFER, null); return px; }
+function draw() {
+  uniforms();
+  gl.viewport(0, 0, cv.width, cv.height);
+  gl.uniform1f(U.uWipe, mode === "wipe" ? wipe : mode === "after" ? -1 : 2);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  $("handle").style.display = mode === "wipe" ? "block" : "none"; $("handle").style.left = (wipe * 100) + "%";
+  $("tagL").textContent = mode === "after" ? S.after : (beforeLog ? S.logTag : S.refTag); $("tagR").textContent = mode === "before" ? "" : S.after;
+  $("tagR").style.display = mode === "before" ? "none" : "block"; $("tagL").style.display = mode === "after" ? "none" : "block";
+  scopes(renderSmall(-1));
+}
+function scopes(p) {
+  const W = $("wave"), w = W.getContext("2d"); w.fillStyle = "#0d0d0d"; w.fillRect(0, 0, W.width, W.height);
+  w.strokeStyle = "rgba(255,255,255,.08)"; for (let i = 0; i <= 4; i++) { const y = Math.round(10 + i * (W.height - 20) / 4) + .5; w.beginPath(); w.moveTo(0, y); w.lineTo(W.width, y); w.stroke(); }
+  const img = w.getImageData(0, 0, W.width, W.height); const d = img.data; const sx = W.width / FW, H = W.height - 20;
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) { const i = (y * FW + x) * 4; const L = (.2126 * p[i] + .7152 * p[i + 1] + .0722 * p[i + 2]) / 255;
+    const X = Math.floor(x * sx), Y = Math.round(10 + (1 - L) * H); for (let k = 0; k < sx; k++) { const j = (Y * W.width + X + k) * 4; d[j] = Math.min(255, d[j] + 30); d[j + 1] = Math.min(255, d[j + 1] + 24); d[j + 2] = Math.min(255, d[j + 2] + 12); } }
+  w.putImageData(img, 0, 0);
+  w.fillStyle = "rgba(201,162,94,.8)"; w.font = "700 18px JetBrains Mono, monospace"; w.fillText("100", 6, 22); w.fillText("0", 6, W.height - 14);
+  const Hc = $("hist"), h = Hc.getContext("2d"); h.fillStyle = "#0d0d0d"; h.fillRect(0, 0, Hc.width, Hc.height);
+  const bins = [new Float32Array(128), new Float32Array(128), new Float32Array(128)];
+  for (let i = 0; i < p.length; i += 4) for (let c = 0; c < 3; c++) bins[c][p[i + c] >> 1]++;
+  const mx = Math.max(...bins.map((b) => Math.max(...b.slice(1, 127)))) || 1; h.globalCompositeOperation = "lighter";
+  ["rgba(224,100,92,.65)", "rgba(116,194,122,.65)", "rgba(111,158,232,.65)"].forEach((col, c) => { h.fillStyle = col; h.beginPath(); h.moveTo(0, Hc.height);
+    for (let k = 0; k < 128; k++) h.lineTo(k * Hc.width / 127, Hc.height - Math.min(1, bins[c][k] / mx) * (Hc.height - 8)); h.lineTo(Hc.width, Hc.height); h.fill(); });
+  h.globalCompositeOperation = "source-over"; HIST = bins; HISTMAX = mx; drawCurve();
+}
+let HIST = null, HISTMAX = 1;
+let thumbT = null;
+function thumbs() { clearTimeout(thumbT); thumbT = setTimeout(() => {
+  uniforms(); FRAMES.forEach((fr, i) => { setImage(fr.img); const p = renderSmall(-1); const c = fr.cv.getContext("2d"); const id = c.createImageData(FW, FH);
+    for (let y = 0; y < FH; y++) id.data.set(p.subarray((FH - 1 - y) * FW * 4, (FH - y) * FW * 4), y * FW * 4); c.putImageData(id, 0, 0); });
+  if (!video && FRAMES[cur]) setImage(FRAMES[cur].img); else if (video) setImage(video); draw(); }, 140); }
+let pend = false; const redraw = () => { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; draw(); }); };
+const changed = (full) => { save(); redraw(); thumbs(); cmd(); if (full) syncUI(); };
+
+// ── curve-editor ──────────────────────────────────────────────────────────────────────────────────────────────
+let chan = "m", drag = -1;
+const CC = $("curve"), cx = CC.getContext("2d"); const PAD = 22;
+const toPx = (x, y) => [PAD + x * (CC.width - 2 * PAD), CC.height - PAD - y * (CC.height - 2 * PAD)];
+const fromPx = (X, Y) => [Math.min(1, Math.max(0, (X - PAD) / (CC.width - 2 * PAD))), Math.min(1, Math.max(0, (CC.height - PAD - Y) / (CC.height - 2 * PAD)))];
+const COL = { m: "#c9a25e", r: "#e0645c", g: "#74c27a", b: "#6f9ee8" };
+function drawCurve() {
+  cx.fillStyle = "#0f0f0f"; cx.fillRect(0, 0, CC.width, CC.height);
+  if (HIST) { const idx = { r: 0, g: 1, b: 2 }; const bins = chan === "m" ? HIST[0].map((v, k) => (v + HIST[1][k] + HIST[2][k]) / 3) : HIST[idx[chan]];
+    cx.fillStyle = "rgba(255,255,255,.07)"; cx.beginPath(); let [X0, Y0] = toPx(0, 0); cx.moveTo(X0, Y0);
+    for (let k = 0; k < 128; k++) { const [X, Y] = toPx(k / 127, Math.min(1, bins[k] / HISTMAX) * .9); cx.lineTo(X, Y); } const [X1] = toPx(1, 0); cx.lineTo(X1, Y0); cx.fill(); }
+  cx.strokeStyle = "rgba(255,255,255,.09)"; cx.lineWidth = 1.5;
+  for (let i = 0; i <= 4; i++) { const [X] = toPx(i / 4, 0); const [, Y] = toPx(0, i / 4); cx.beginPath(); cx.moveTo(X, PAD); cx.lineTo(X, CC.height - PAD); cx.stroke(); cx.beginPath(); cx.moveTo(PAD, Y); cx.lineTo(CC.width - PAD, Y); cx.stroke(); }
+  cx.setLineDash([6, 6]); cx.beginPath(); cx.moveTo(...toPx(0, 0)); cx.lineTo(...toPx(1, 1)); cx.stroke(); cx.setLineDash([]);
+  const T = curveTable(st.curves[chan], 256); cx.strokeStyle = COL[chan]; cx.lineWidth = 3.5; cx.beginPath();
+  for (let i = 0; i < 256; i++) { const [X, Y] = toPx(i / 255, T[i]); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); } cx.stroke();
+  for (const [x, y] of st.curves[chan]) { const [X, Y] = toPx(x, y); cx.fillStyle = "#0f0f0f"; cx.strokeStyle = COL[chan]; cx.lineWidth = 3; cx.beginPath(); cx.arc(X, Y, 9, 0, 7); cx.fill(); cx.stroke(); }
+  $("curveInfo").textContent = (chan === "m" ? S.master : chan.toUpperCase()) + " · " + st.curves[chan].length + " " + S.points;
+}
+const evPt = (e) => { const r = CC.getBoundingClientRect(); return [(e.clientX - r.left) * CC.width / r.width, (e.clientY - r.top) * CC.height / r.height]; };
+CC.addEventListener("pointerdown", (e) => { const [X, Y] = evPt(e); const pts = st.curves[chan];
+  drag = pts.findIndex(([x, y]) => { const [a, b] = toPx(x, y); return Math.hypot(a - X, b - Y) < 22; });
+  if (drag < 0) { const [x, y] = fromPx(X, Y); pts.push([x, y]); pts.sort((a, b) => a[0] - b[0]); drag = pts.findIndex((p) => p[0] === x && p[1] === y); }
+  CC.setPointerCapture(e.pointerId); upCurves(); changed(); });
+CC.addEventListener("pointermove", (e) => { if (drag < 0) return; const pts = st.curves[chan]; const [X, Y] = evPt(e); let [x, y] = fromPx(X, Y);
+  if (drag === 0) x = 0; else if (drag === pts.length - 1 && pts[drag][0] === 1) x = 1;
+  else x = Math.min(pts[drag + 1][0] - .01, Math.max(pts[drag - 1][0] + .01, x));
+  const out = (Y < -40 || Y > CC.height + 40) && drag > 0 && drag < pts.length - 1;
+  pts[drag] = [x, y]; if (out) { pts.splice(drag, 1); drag = -1; } upCurves(); changed(); });
+CC.addEventListener("pointerup", () => { drag = -1; });
+CC.addEventListener("dblclick", (e) => { const [X, Y] = evPt(e); const pts = st.curves[chan];
+  const i = pts.findIndex(([x, y]) => { const [a, b] = toPx(x, y); return Math.hypot(a - X, b - Y) < 22; }); if (i > 0 && i < pts.length - 1) { pts.splice(i, 1); upCurves(); changed(); } });
+document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => { chan = b.dataset.c; document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); drawCurve(); });
+const CPRE = { lin: LIN(), soft: [[0, 0], [.25, .21], [.5, .5], [.75, .79], [1, 1]], firm: [[0, 0], [.22, .16], [.5, .5], [.78, .85], [1, 1]],
+  matte: [[0, .05], [.25, .23], [.75, .78], [1, .97]], lift: [[0, 0], [.3, .34], [.7, .74], [1, 1]] };
+DATA.curvePresets.forEach(([k, label]) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { st.curves[chan] = CPRE[k].map((p) => p.slice()); upCurves(); changed(); }; $("cpresets").appendChild(b); });
+
+// ── panelen ───────────────────────────────────────────────────────────────────────────────────────────────────
+function syncUI() {
+  document.querySelectorAll("#bases .opt").forEach((o) => { o.classList.toggle("on", o.dataset.id === st.base); o.querySelector("input").checked = o.dataset.id === st.base; });
+  $("look").value = st.look;
+  const set = (id, v, f) => { $(id).value = v; $(id + "O").textContent = f; };
+  set("lookAmt", Math.round(st.lookAmt * 100), Math.round(st.lookAmt * 100) + "%");
+  set("exp", Math.round(st.exp * 100), (st.exp >= 0 ? "+" : "") + st.exp.toFixed(2)); set("con", Math.round(st.con * 100), (st.con >= 0 ? "+" : "") + Math.round(st.con * 100));
+  set("sat", Math.round(st.sat * 100), Math.round(st.sat * 100) + "%"); set("warm", Math.round(st.warm * 100), (st.warm >= 0 ? "+" : "") + Math.round(st.warm * 100));
+  drawCurve();
+}
+BASES.forEach((b) => { const o = document.createElement("label"); o.className = "opt"; o.dataset.id = b.id;
+  o.innerHTML = `<input type="radio" name="base"><b>${b.name}</b><i>${b.note || ""}</i>`; o.onclick = (e) => { e.preventDefault(); st.base = b.id; bindLuts(); changed(true); }; $("bases").appendChild(o); });
+LOOKS.forEach((l) => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; $("look").appendChild(o); });
+$("look").onchange = () => { st.look = $("look").value; bindLuts(); changed(true); };
+for (const [id, k, f] of [["lookAmt", "lookAmt", (v) => v / 100], ["exp", "exp", (v) => v / 100], ["con", "con", (v) => v / 100], ["sat", "sat", (v) => v / 100], ["warm", "warm", (v) => v / 100]])
+  $(id).oninput = () => { st[k] = f(+$(id).value); syncUI(); changed(); };
+PRESETS.forEach((p) => { const b = document.createElement("button"); b.textContent = p.name; if (p.primary) b.className = "primary";
+  b.onclick = () => { st = { ...fresh(), ...JSON.parse(JSON.stringify(p.s)) }; bindLuts(); upCurves(); changed(true); toast(p.name); }; $("presets").appendChild(b); });
+document.querySelectorAll("#mode button").forEach((b) => b.onclick = () => { mode = b.dataset.m; document.querySelectorAll("#mode button").forEach((x) => x.classList.toggle("on", x === b)); redraw(); });
+document.querySelectorAll("#refsel button").forEach((b) => b.onclick = () => { beforeLog = b.dataset.r === "log"; document.querySelectorAll("#refsel button").forEach((x) => x.classList.toggle("on", x === b)); redraw(); });
+if (!DATA.ref) document.querySelector('#refsel [data-r=ref]').textContent = S.refBase;
+// wipe slepen
+const V = $("viewer"); let wdrag = false;
+const setW = (e) => { const r = V.getBoundingClientRect(); wipe = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); redraw(); };
+V.addEventListener("pointerdown", (e) => { if (mode !== "wipe") return; wdrag = true; V.setPointerCapture(e.pointerId); setW(e); });
+V.addEventListener("pointermove", (e) => { if (wdrag) setW(e); }); V.addEventListener("pointerup", () => { wdrag = false; });
+
+// ── eigen beeld, eigen LUT's ──────────────────────────────────────────────────────────────────────────────────
+function addThumb(img, label, i) { const d = document.createElement("div"); d.className = "thumb"; const c = document.createElement("canvas"); c.width = FW; c.height = FH; d.appendChild(c);
+  const s = document.createElement("span"); s.textContent = label; d.appendChild(s); d.onclick = () => select(i); $("strip").appendChild(d); return c; }
+function select(i) { cur = i; stopVideo(); setImage(FRAMES[i].img); document.querySelectorAll(".thumb").forEach((t, k) => t.classList.toggle("on", k === i)); redraw(); }
+function stopVideo() { if (video) { video.pause(); video = null; $("vbar").classList.remove("on"); } }
+$("file").onchange = (e) => { const f = e.target.files[0]; if (!f) return; const url = URL.createObjectURL(f);
+  if (f.type.startsWith("video")) { stopVideo(); const v = document.createElement("video"); v.src = url; v.muted = true; v.loop = true; v.playsInline = true;
+    v.onloadeddata = () => { video = v; $("vbar").classList.add("on"); setImage(v); redraw(); tick(); }; v.load(); }
+  else { const im = new Image(); im.onload = () => { const i = FRAMES.length; FRAMES.push({ img: im, cv: addThumb(im, f.name, i) }); select(i); thumbs(); }; im.src = url; } };
+function tick() { if (!video) return; if (!video.paused) { setImage(video); draw(); } const d = video.duration || 1; $("vseek").value = Math.round(video.currentTime / d * 1000);
+  $("vtime").textContent = Math.floor(video.currentTime / 60) + ":" + String(Math.floor(video.currentTime % 60)).padStart(2, "0"); requestAnimationFrame(tick); }
+$("vplay").onclick = () => { if (!video) return; video.paused ? video.play() : video.pause(); $("vplay").textContent = video.paused ? "▶" : "❚❚"; };
+$("vseek").oninput = () => { if (!video) return; video.currentTime = $("vseek").value / 1000 * (video.duration || 0); video.onseeked = () => { setImage(video); draw(); }; };
+const cubeIn = (inp, cb) => inp.onchange = (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { try { cb(parseCube(t), f.name); } catch (err) { toast(S.badCube); } }); };
+$("dropBase").onclick = () => $("cubeBase").click(); $("dropLook").onclick = () => $("cubeLook").click();
+cubeIn($("cubeBase"), (l, n) => { customBase = l; st.base = "custom"; if (!document.querySelector('#bases [data-id=custom]')) { const o = document.createElement("label"); o.className = "opt"; o.dataset.id = "custom";
+  o.innerHTML = `<input type="radio" name="base"><b>${n}</b><i>${S.ownCube}</i>`; o.onclick = (e) => { e.preventDefault(); st.base = "custom"; bindLuts(); changed(true); }; $("bases").appendChild(o); }
+  else document.querySelector('#bases [data-id=custom] b').textContent = n; bindLuts(); changed(true); });
+cubeIn($("cubeLook"), (l, n) => { customLook = l; st.look = "custom"; let o = $("look").querySelector('[value=custom]'); if (!o) { o = document.createElement("option"); o.value = "custom"; $("look").appendChild(o); } o.textContent = n; bindLuts(); changed(true); });
+
+// ── LUT bakken (zelfde wiskunde als de shader, op het 3D-raster) en downloaden ──────────────────────────────────
+function tri(l, r, g, b) { const n = l.n, f = l.f; const x = Math.min(1, Math.max(0, r)) * (n - 1), y = Math.min(1, Math.max(0, g)) * (n - 1), z = Math.min(1, Math.max(0, b)) * (n - 1);
+  const x0 = Math.min(n - 2, Math.floor(x)), y0 = Math.min(n - 2, Math.floor(y)), z0 = Math.min(n - 2, Math.floor(z)); const dx = x - x0, dy = y - y0, dz = z - z0; const o = [0, 0, 0];
+  for (let c = 0; c < 3; c++) { const v = (i, j, k) => f[((k * n + j) * n + i) * 3 + c];
+    const c00 = v(x0, y0, z0) * (1 - dx) + v(x0 + 1, y0, z0) * dx, c10 = v(x0, y0 + 1, z0) * (1 - dx) + v(x0 + 1, y0 + 1, z0) * dx;
+    const c01 = v(x0, y0, z0 + 1) * (1 - dx) + v(x0 + 1, y0, z0 + 1) * dx, c11 = v(x0, y0 + 1, z0 + 1) * (1 - dx) + v(x0 + 1, y0 + 1, z0 + 1) * dx;
+    o[c] = (c00 * (1 - dy) + c10 * dy) * (1 - dz) + (c01 * (1 - dy) + c11 * dy) * dz; } return o; }
+function bake(N) {
+  const T = ["r", "g", "b", "m"].map((c) => curveTable(st.curves[c])); const cu = (x, t) => { const p = Math.min(1, Math.max(0, x)) * 1023, i = Math.min(1022, Math.floor(p)), d = p - i; return t[i] * (1 - d) + t[i + 1] * d; };
+  const B = curBase() || IDENT, Lk = curLook(); const ex = Math.pow(2, st.exp); const lines = [];
+  for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    let y = tri(B, i / (N - 1), j / (N - 1), k / (N - 1)).map((v) => v * ex); y[0] *= 1 + .08 * st.warm; y[2] *= 1 - .08 * st.warm; y = y.map((v) => Math.min(1, Math.max(0, v)));
+    if (Lk) { const z = tri(Lk, y[0], y[1], y[2]); y = y.map((v, c) => v + (z[c] - v) * st.lookAmt); }
+    y = y.map((v) => { const s = v * v * (3 - 2 * v); return Math.min(1, Math.max(0, v + st.con * 2 * (s - v))); });
+    y = [cu(cu(y[0], T[3]), T[0]), cu(cu(y[1], T[3]), T[1]), cu(cu(y[2], T[3]), T[2])];
+    const L = .2126 * y[0] + .7152 * y[1] + .0722 * y[2]; y = y.map((v) => Math.min(1, Math.max(0, L + (v - L) * st.sat)));
+    lines.push(y.map((v) => v.toFixed(6)).join(" ")); }
+  return lines;
+}
+const fname = () => ($("fname").value.trim() || "grade").replace(/[^\w\-. ]+/g, "").replace(/\.cube$/i, "");
+function download(name, text, type) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+$("dl").onclick = () => { const N = 65; const t0 = performance.now(); const lines = bake(N);
+  const head = [`TITLE "${fname()}"`, `# ${S.made} ${new Date().toISOString().slice(0, 10)} · ${S.baseIs}: ${(BASES.find((b) => b.id === st.base) || { name: st.base }).name}`,
+    `# ${JSON.stringify(st)}`, `LUT_3D_SIZE ${N}`, "DOMAIN_MIN 0.0 0.0 0.0", "DOMAIN_MAX 1.0 1.0 1.0"];
+  download(fname() + ".cube", head.concat(lines).join("\n") + "\n", "text/plain"); toast(S.saved + " " + fname() + ".cube (" + Math.round(performance.now() - t0) + " ms)"); };
+$("dljson").onclick = () => download(fname() + ".json", JSON.stringify(st, null, 1), "application/json");
+$("ldjson").onclick = () => $("jsonfile").click();
+$("jsonfile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((t) => { try { st = { ...fresh(), ...JSON.parse(t) }; bindLuts(); upCurves(); changed(true); toast(S.loaded); } catch { toast(S.badJson); } }); };
+function cmd() { $("cmd").textContent = DATA.cmd.replaceAll("{f}", fname()); }
+$("copy").onclick = () => { navigator.clipboard.writeText($("cmd").textContent).then(() => toast(S.copied), () => toast(S.copyFail)); };
+$("fname").oninput = () => { cmd(); save(); };
+function save() { try { localStorage.setItem(DATA.key, JSON.stringify({ st, f: $("fname").value })); } catch {} }
+function load() { try { const s = JSON.parse(localStorage.getItem(DATA.key)); if (s) { st = { ...fresh(), ...s.st }; if (s.f) $("fname").value = s.f; } } catch {} }
+
+// ── start ─────────────────────────────────────────────────────────────────────────────────────────────────────
+load(); if (st.base === "custom" && !customBase) st.base = BASES.length ? BASES[0].id : "custom"; if (st.look === "custom") st.look = "none";
+bindLuts(); upCurves(); syncUI(); cmd();
+let loaded = 0;
+if (!DATA.frames.length) { $("strip").innerHTML = `<div class="drop" style="grid-column:1/-1" onclick="document.getElementById('file').click()">${S.dropFirst}</div>`; }
+DATA.frames.forEach((fr, i) => { const im = new Image(); im.onload = () => { FRAMES[i].img = im; if (++loaded === DATA.frames.length) { select(0); thumbs(); } }; FRAMES[i] = { img: null, cv: addThumb(null, fr.label, i) }; im.src = fr.src; });
+</script>
+</body>
+</html>

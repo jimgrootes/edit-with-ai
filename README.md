@@ -28,6 +28,8 @@ Prices before tax, checked 8 November 2026. Buy on the provider's website rather
 - The tools the agent builds once: probe, transcribe, render, faces, captions, contact sheets, quality check.
 - How it plans a talking-head cut: retakes, silences, fillers, punch-ins, b-roll, editor cues ("Claude, zoom in").
 - Footage organizing: an index of every clip with thumbnails, searchable in plain words.
+- [`tools/grade.html`](tools/grade.html): grade your (log) footage in the browser with curves, compare before and after,
+  and download a `.cube` LUT that the agent applies to all your clips. No editing program needed.
 - Working cheaply on the $20 plans.
 - Route 2: connecting to DaVinci Resolve Studio, proxies, timelines, overlays, and what to do when the connection fails.
 
