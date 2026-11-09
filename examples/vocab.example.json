@@ -1,0 +1,6 @@
+{
+  "lang": "en",
+  "prompt": "Umm, uh, so, like, okay.",
+  "fillers": [],
+  "fix": {"cloud": "Claude", "clod": "Claude", "Entropic's": "Anthropic's", "ffmpack": "ffmpeg"}
+}

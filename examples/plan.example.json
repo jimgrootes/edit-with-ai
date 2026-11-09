@@ -1,0 +1,17 @@
+{
+  "format": "16:9",
+  "fps": 30,
+  "loudness": -14,
+  "punch": 1.12,
+  "takes": {
+    "main": {"src": "/Volumes/Footage/2026-11-08 shoot/A001.MOV", "keep": [[3, 282], [289, 449], [458, 622]]},
+    "end":  {"src": "/Volumes/Footage/2026-11-08 shoot/A004.MOV", "keep": [[0, 230]]}
+  },
+  "order": ["main", "end"],
+  "zoom":  [{"take": "main", "from": 51, "to": 70, "zoom": 1.25}],
+  "cards": [{"png": "work/cards/prices.png", "at": ["main", 130], "dur": 5},
+            {"png": "work/cards/end.png", "at": "end", "dur": 4}],
+  "broll": [{"clip": "/Volumes/Footage/2026-11-08 shoot/broll/pool.MP4", "in": 1.0, "dur": 3.5, "at": ["main", 412],
+             "lut": "assets/luts/my-grade.cube"}],
+  "music": {"files": ["assets/music/track-a.wav", "assets/music/track-b.wav"], "db": 21}
+}

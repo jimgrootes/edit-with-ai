@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-/* Grading-UI: neutraal donkergrijs (geen warme of koele zweem die je kleurbeoordeling stuurt), messing als accent. */
+/* Grading UI: neutral dark grey (no warm or cool cast that steers your colour judgement), brass as the accent. */
 :root {
   --bg: #161616; --panel: #1f1f1f; --panel2: #262626; --line: #333; --text: #ecebe8; --mute: #9a968f;
   --brass: #c9a25e; --brass-d: #a97f36; --ink: #16130f; --paper: #f4efe7; --ok: #8fb98a; --r: #e0645c; --g: #74c27a; --b: #6f9ee8;
@@ -156,7 +156,7 @@ const S = DATA.strings;
 const $ = (id) => document.getElementById(id);
 const toast = (t) => { const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.remove("on"), 2200); };
 
-// ── LUT's: half-floats (base64) → Float32 + Uint16 voor de GPU ─────────────────────────────────────────────────
+// ── LUTs: half floats (base64) → Float32 + Uint16 for the GPU ──────────────────────────────────────────────────
 const b64u8 = (s) => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
 const half2f = (h) => { const s = (h & 0x8000) ? -1 : 1, e = (h >> 10) & 31, m = h & 1023;
   return e === 0 ? s * Math.pow(2, -14) * (m / 1024) : e === 31 ? (m ? NaN : s * Infinity) : s * Math.pow(2, e - 15) * (1 + m / 1024); };
@@ -169,7 +169,7 @@ function parseCube(txt) {
   for (const raw of txt.split(/\r?\n/)) { const l = raw.trim(); if (!l || l[0] === "#") continue;
     if (/^LUT_3D_SIZE/i.test(l)) n = parseInt(l.split(/\s+/)[1]); else if (/^DOMAIN_MIN/i.test(l)) mn = l.split(/\s+/).slice(1).map(Number);
     else if (/^DOMAIN_MAX/i.test(l)) mx = l.split(/\s+/).slice(1).map(Number); else if (/^[-\d.]/.test(l)) { const p = l.split(/\s+/).map(Number); if (p.length >= 3) vals.push(p[0], p[1], p[2]); } }
-  if (!n || vals.length !== n * n * n * 3) throw new Error("geen geldige 3D-LUT");
+  if (!n || vals.length !== n * n * n * 3) throw new Error("not a valid 3D LUT");
   const f = new Float32Array(vals); const h = new Uint16Array(f.length); for (let i = 0; i < f.length; i++) h[i] = f2half(f[i]);
   return { n, f, h, mn, mx };
 }
@@ -178,14 +178,14 @@ const LOOKS = [{ id: "none", name: S.noLook }].concat(DATA.looks.map((l) => ({ .
 const REF = DATA.ref ? lutFromHalf(DATA.ref.n, DATA.ref.d) : null;
 const IDENT = (() => { const n = 2, f = new Float32Array([0,0,0, 1,0,0, 0,1,0, 1,1,0, 0,0,1, 1,0,1, 0,1,1, 1,1,1]); const h = new Uint16Array(f.length); for (let i = 0; i < f.length; i++) h[i] = f2half(f[i]); return { n, f, h }; })();
 
-// ── instellingen ──────────────────────────────────────────────────────────────────────────────────────────────
+// ── settings ──────────────────────────────────────────────────────────────────────────────────────────────────
 const LIN = () => [[0, 0], [1, 1]];
 const fresh = () => ({ base: BASES.length ? BASES[0].id : "custom", look: "none", lookAmt: 1, exp: 0, con: 0, sat: 1, warm: 0, curves: { m: LIN(), r: LIN(), g: LIN(), b: LIN() } });
 let st = fresh();
 let customBase = null, customLook = null;
 const PRESETS = DATA.presets || [];
 
-// ── monotone kubische curve (Fritsch–Carlson) → tabel van 1024 ─────────────────────────────────────────────────
+// ── monotone cubic curve (Fritsch–Carlson) → table of 1024 ─────────────────────────────────────────────────────
 function curveTable(pts, n = 1024) {
   const p = pts.slice().sort((a, b) => a[0] - b[0]); const k = p.length; const out = new Float32Array(n);
   const dx = [], dy = [], m = [];
@@ -205,9 +205,9 @@ function curveTable(pts, n = 1024) {
 
 // ── WebGL2 ────────────────────────────────────────────────────────────────────────────────────────────────────
 const cv = $("gl"); const gl = cv.getContext("webgl2", { preserveDrawingBuffer: true, premultipliedAlpha: false });
-if (!gl) { document.querySelector("main").innerHTML = '<div class="card err">' + S.noGL + '</div>'; throw new Error("geen WebGL2"); }
+if (!gl) { document.querySelector("main").innerHTML = '<div class="card err">' + S.noGL + '</div>'; throw new Error("no WebGL2"); }
 gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);   // LUT-rijen (33 × RGB16F = 198 bytes) zijn niet op 4 uitgelijnd
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);   // LUT rows (33 × RGB16F = 198 bytes) are not 4-byte aligned
 const VS = `#version 300 es
 in vec2 p; out vec2 uv; void main(){ uv = vec2(p.x*.5+.5, .5-p.y*.5); gl_Position = vec4(p,0.,1.); }`;
 const FS = `#version 300 es
@@ -267,10 +267,10 @@ function uniforms() {
   gl.uniform1f(U.uExp, st.exp); gl.uniform1f(U.uWarm, st.warm); gl.uniform1f(U.uCon, st.con); gl.uniform1f(U.uSat, st.sat); gl.uniform1f(U.uLookAmt, st.lookAmt);
   gl.uniform1i(U.uBeforeLog, beforeLog ? 1 : 0);
 }
-// ── beelden ───────────────────────────────────────────────────────────────────────────────────────────────────
+// ── images ────────────────────────────────────────────────────────────────────────────────────────────────────
 const FRAMES = []; let cur = 0; let video = null;
 function setImage(src) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, imgTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); }
-// kleine render naar een offscreen buffer voor scopes en duimnagels
+// small render to an offscreen buffer for the scopes and thumbnails
 const fbo = gl.createFramebuffer(), fboTex = gl.createTexture(); const FW = 320, FH = 180;
 gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, fboTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, FW, FH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -349,7 +349,7 @@ const CPRE = { lin: LIN(), soft: [[0, 0], [.25, .21], [.5, .5], [.75, .79], [1, 
   matte: [[0, .05], [.25, .23], [.75, .78], [1, .97]], lift: [[0, 0], [.3, .34], [.7, .74], [1, 1]] };
 DATA.curvePresets.forEach(([k, label]) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { st.curves[chan] = CPRE[k].map((p) => p.slice()); upCurves(); changed(); }; $("cpresets").appendChild(b); });
 
-// ── panelen ───────────────────────────────────────────────────────────────────────────────────────────────────
+// ── panels ────────────────────────────────────────────────────────────────────────────────────────────────────
 function syncUI() {
   document.querySelectorAll("#bases .opt").forEach((o) => { o.classList.toggle("on", o.dataset.id === st.base); o.querySelector("input").checked = o.dataset.id === st.base; });
   $("look").value = st.look;
@@ -370,13 +370,13 @@ PRESETS.forEach((p) => { const b = document.createElement("button"); b.textConte
 document.querySelectorAll("#mode button").forEach((b) => b.onclick = () => { mode = b.dataset.m; document.querySelectorAll("#mode button").forEach((x) => x.classList.toggle("on", x === b)); redraw(); });
 document.querySelectorAll("#refsel button").forEach((b) => b.onclick = () => { beforeLog = b.dataset.r === "log"; document.querySelectorAll("#refsel button").forEach((x) => x.classList.toggle("on", x === b)); redraw(); });
 if (!DATA.ref) document.querySelector('#refsel [data-r=ref]').textContent = S.refBase;
-// wipe slepen
+// drag the wipe
 const V = $("viewer"); let wdrag = false;
 const setW = (e) => { const r = V.getBoundingClientRect(); wipe = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); redraw(); };
 V.addEventListener("pointerdown", (e) => { if (mode !== "wipe") return; wdrag = true; V.setPointerCapture(e.pointerId); setW(e); });
 V.addEventListener("pointermove", (e) => { if (wdrag) setW(e); }); V.addEventListener("pointerup", () => { wdrag = false; });
 
-// ── eigen beeld, eigen LUT's ──────────────────────────────────────────────────────────────────────────────────
+// ── your own image, your own LUTs ─────────────────────────────────────────────────────────────────────────────
 function addThumb(img, label, i) { const d = document.createElement("div"); d.className = "thumb"; const c = document.createElement("canvas"); c.width = FW; c.height = FH; d.appendChild(c);
   const s = document.createElement("span"); s.textContent = label; d.appendChild(s); d.onclick = () => select(i); $("strip").appendChild(d); return c; }
 function select(i) { cur = i; stopVideo(); setImage(FRAMES[i].img); document.querySelectorAll(".thumb").forEach((t, k) => t.classList.toggle("on", k === i)); redraw(); }
@@ -396,7 +396,7 @@ cubeIn($("cubeBase"), (l, n) => { customBase = l; st.base = "custom"; if (!docum
   else document.querySelector('#bases [data-id=custom] b').textContent = n; bindLuts(); changed(true); });
 cubeIn($("cubeLook"), (l, n) => { customLook = l; st.look = "custom"; let o = $("look").querySelector('[value=custom]'); if (!o) { o = document.createElement("option"); o.value = "custom"; $("look").appendChild(o); } o.textContent = n; bindLuts(); changed(true); });
 
-// ── LUT bakken (zelfde wiskunde als de shader, op het 3D-raster) en downloaden ──────────────────────────────────
+// ── bake the LUT (same math as the shader, on the 3D grid) and download it ──────────────────────────────────────
 function tri(l, r, g, b) { const n = l.n, f = l.f; const x = Math.min(1, Math.max(0, r)) * (n - 1), y = Math.min(1, Math.max(0, g)) * (n - 1), z = Math.min(1, Math.max(0, b)) * (n - 1);
   const x0 = Math.min(n - 2, Math.floor(x)), y0 = Math.min(n - 2, Math.floor(y)), z0 = Math.min(n - 2, Math.floor(z)); const dx = x - x0, dy = y - y0, dz = z - z0; const o = [0, 0, 0];
   for (let c = 0; c < 3; c++) { const v = (i, j, k) => f[((k * n + j) * n + i) * 3 + c];

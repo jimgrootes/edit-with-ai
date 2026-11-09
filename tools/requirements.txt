@@ -1,0 +1,7 @@
+# Python packages for the tools. Install into tools/.venv:
+#   python3 -m venv tools/.venv && tools/.venv/bin/pip install -r tools/requirements.txt
+#   (Windows: py -m venv tools\.venv && tools\.venv\Scripts\pip install -r tools\requirements.txt)
+# Models are not in the repo: run tools/fetch_models.py (Whisper medium 1.5 GB + YuNet face model 232 KB).
+numpy>=1.24
+opencv-python-headless>=4.8   # face detection with YuNet (cv2.FaceDetectorYN); OpenCV 5 works too
+pillow>=10.1                  # contact sheets and cards
